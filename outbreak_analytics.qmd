@@ -1,10 +1,227 @@
 ---
 title: "Outbreak Analytics"
-author: "Kamaru Imran (KIM)"
+subtitle: "Epidemic Curves"
+author: "Kamarul Imran (KIM)"
 format: html
 editor: visual
 ---
 
+# Outbreak Analysis
+
 ## Introduction
 
 ## Objectives
+
+1.  describe data
+2.  describe trend
+3.  describe epidemic curve
+4.  analyze Reproduction Number
+5.  analyze SIR Models
+
+## Pre-requisites
+
+-   Login to our [Posit Cloud Space](https://posit.cloud/spaces/665099/join?access_code=vB-XQymqJrURs0SzPstvyB5poXnT6kG50bltj3cd)
+-   Install `pacman` package
+
+```{r}
+#install.packages('pacman', dependencies = TRUE)
+```
+
+## Describe Data, Trend and Epidemic Curve
+
+R uses package to run the analysis. We must ensure R has the necessary packages installed and loaded.
+
+```{r}
+pacman::p_load(
+  lubridate,  # general package for handling and converting dates  
+  parsedate,  # has function to "guess" messy dates
+  aweek,      # another option for converting dates to weeks, and weeks to dates
+  zoo,        # additional date/time functions
+  here,       # file management
+  rio,        # data import/export
+  tidyverse)  # data management and visualization  
+```
+
+Check
+
+-   if package is installed, installs if necessary, and loads package for current session
+
+-   any errors received
+
+-   any warning received such as possible conflicts
+
+Import data and view data
+
+```{r}
+linelist <- import("linelist_cleaned.xlsx")
+View(linelist)
+```
+
+Check
+
+-   Can you read the Excel data into R
+
+-   Can you view the dataset
+
+```{r}
+glimpse(linelist)
+```
+
+Describe the dataset
+
+-   how many observations
+
+-   how many columns
+
+-   what types of variables
+
+-   any missing data
+
+-   any strange values?
+
+Comment on the date columns. Are they acceptable?
+
+Convert to from class `dttm` to class `date`
+
+```{r}
+linelist2 <- linelist %>% 
+  mutate(date_onset2 = ymd(date_onset),
+         date_hospitalisation2 = ymd(date_hospitalisation)) 
+glimpse(linelist2)
+```
+
+Get the difference between date of onset and date of hospitalization
+
+-   convert date of onset from character to date objects by specifying dmy format
+
+-   
+
+-   find the difference in days between onset and hospitalisation
+
+```{r}
+linelist2 <- linelist2 %>%
+  mutate(days_onset_to_hosp = date_hospitalisation2 - date_onset2)
+```
+
+Let's check the data again. See the difference format between `date_onset_hosp` and `date_onset_to_hospital`
+
+```{r}
+glimpse(linelist2)
+```
+
+Generate epid week for onset
+
+```{r}
+linelist2 <- linelist2 %>%
+  mutate(epidweek = week(date_onset2))
+```
+
+## Task
+
+Convert the variables to date format
+
+-   date_infection
+
+-   date_outcome
+
+Calculate duration in days for
+
+-   date_infection to date_onset
+
+-   date_onset to date_outcome
+
+generate epidweek for
+
+-   date_infection2 and
+
+-   date_hospitalization2
+
+## Epidemic Curve
+
+Data is linelist data and in daily format. Let's make a epidemic curve for different hospitals
+
+-   group data by hospital and date of hospitalization
+
+-   generate sum of hospitalizations for each day
+
+-   choose only data after 1 June 2013
+
+-   get the results
+
+```{r}
+count_data <- linelist2 %>% 
+  group_by(hospital, date_hospitalisation2) %>% 
+  summarize(n_cases = dplyr::n()) %>% 
+  filter(date_hospitalisation2 > as.Date("2013-06-01")) %>% 
+  ungroup()
+count_data
+```
+
+Data for Central Hospital
+
+```{r}
+central_data <- linelist2 %>% 
+  filter(hospital == "Central Hospital")
+```
+
+Daily Epidemic Curve for Central Hospital
+
+-   set data
+
+-   add histogram
+
+-   map date column to x-axis
+
+-   cases binned by 1 day
+
+-   title
+
+```{r}
+# daily 
+ggplot(data = central_data) +          # set data
+  geom_histogram(                      # add histogram
+    mapping = aes(x = date_onset2),     # map date column to x-axis
+    binwidth = 1)+                     # cases binned by 1 day 
+  labs(title = "Central Hospital - Daily")                # title
+
+```
+
+Weekly Epidemic Curve
+
+-   set data
+
+-   add histogram
+
+-   map date column to x-axis
+
+-   cases binned every 7 days
+
+-   title
+
+```{r}
+# weekly
+ggplot(data = central_data) +          # set data 
+  geom_histogram(                      # add histogram
+      mapping = aes(x = date_onset2),   # map date column to x-axis
+      binwidth = 7)+                   # cases binned every 7 days, starting from first case (!) 
+  labs(title = "Central Hospital - 7-day bins, starting at first case") # title
+```
+
+## Task
+
+Generate Epidemic Curve using date of hospitalization for 
+
+- For different hospitals 
+- For different gender 
+- For different age group
+
+Generate Epidemic Curve using date of onset for 
+
+- For different hospitals
+- For different gender
+- For different age group
+
+
+## References
+
+-   https://epirhandbook.com/en/new_pages/dates.html
