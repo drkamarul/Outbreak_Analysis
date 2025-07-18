@@ -4,3 +4,145 @@ format: html
 editor: visual
 ---
 
+# Reproduction Number
+
+## Introduction
+
+We will use two different methods and packages for R~t~ estimation, namely **EpiNow** and **EpiEstim**, as well as the **projections** package for forecasting case incidence.
+
+This code chunk shows the loading of packages required for the analyses. In this handbook we emphasize `p_load()` from **pacman**, which installs the package if necessary *and* loads it for use. You can also load installed packages with `library()` from **base** R. See the page on [R basics](https://epirhandbook.com/en/new_pages/basics.html) for more information on R packages.
+
+## Pre-requisites
+
+-   Login to our [Posit Cloud Space](https://posit.cloud/spaces/665099/join?access_code=vB-XQymqJrURs0SzPstvyB5poXnT6kG50bltj3cd)
+-   Install `pacman` package
+
+```{r}
+#install.packages('pacman', dependencies = TRUE)
+```
+
+## Load Packages
+
+R uses package to run the analysis. We must ensure R has the necessary packages installed and loaded.
+
+```{r}
+pacman::p_load(
+   EpiEstim,
+   tidyverse
+)
+```
+
+Check
+
+-   if package is installed, installs if necessary, and loads package for current session
+
+-   any errors received
+
+-   any warning received such as possible conflicts
+
+Read data
+
+Flu2009 an object of list with
+
+-   incidence
+
+-   Serial Interval distribution
+
+-   Serial interval data
+
+```{r}
+data(Flu2009)
+class(Flu2009)
+```
+
+```{r}
+Flu2009$incidence |> 
+  slice(1:10)
+Flu2009$si_distr |> 
+  head(10)
+Flu2009$si_data |> 
+  head(10)
+
+```
+
+interval-ceonsored serial interval data:
+
+-   each line represents a transmission event,
+
+-   EL/ER show the lower/upper bound of the symptoms onset date in the infector
+
+-   SL/SR show the same for the secondary case
+
+-   type has entries 0 corresponding to doubly interval-censored data
+
+-   (see Reich et al. Statist. Med. 2009).
+
+## Packages
+
+Incidence
+
+We can use the `incidence` R package to easily plot the daily incidence data:
+
+```{r}
+library(incidence)
+plot(as.incidence(Flu2009$incidence$I, dates = Flu2009$incidence$dates))
+
+```
+
+EpiEstim
+
+We can run `estimate_R` on the incidence data to estimate the reproduction number R. For this, we need to specify i) the time window(s) over which to estimate R and ii) information on the distribution of the serial interval.
+
+For i), the default behavior is to estimate R over weekly sliding windows. This can be changed through the `config$t_start` and `config$t_end` arguments (see below, “Changing the time windows for estimation”). For ii), there are several options, specified in the `method` argument.
+
+The simplest is the `parametric_si` method, where you only specify the mean and standard deviation of the SI.
+
+```{r}
+res_parametric_si <- estimate_R(Flu2009$incidence, 
+                                method="parametric_si",
+                                config = make_config(list(
+                                  mean_si = 2.6, 
+                                  std_si = 1.5))
+)
+```
+
+```{r}
+head(res_parametric_si$R)
+
+```
+
+The output of the estimate_r function is a list containing a number of elements, the most important of which is `R`, a data.frame containing details on the estimated reproduction number. Each line corresponds to one time window.
+
+The output can be plotted as follows:
+
+```{r}
+plot(res_parametric_si, legend = FALSE)
+
+```
+
+This produces three graphs showing the incidence time series, the estimated reproduction number (posterior mean and 95\\% credible interval, with estimates for a time window plotted at the end of the time window) and the discrete distribution of the serial interval.
+
+## Estimating R with a non parametric serial interval distribution
+
+If one already has a full distribution of the serial interval, and not only a mean and standard deviation, this can be fed into `estimate_r` as follows:
+
+-   Default config will estimate R on weekly sliding windows.
+
+-   To change this change the t_start and t_end arguments.
+
+-   si_distr gives the probability mass function of the serial interval for
+
+-   time intervals 0, 1, 2, etc.
+
+```{r}
+res_non_parametric_si <- estimate_R(Flu2009$incidence, 
+                                    method="non_parametric_si",
+                                    config = make_config(list(
+                                      si_distr = Flu2009$si_distr))
+)
+plot(res_non_parametric_si, "R")
+```
+
+Reference
+
+1.  EpiEstim [Vignette](https://cran.r-project.org/web/packages/EpiEstim/vignettes/demo.html)
