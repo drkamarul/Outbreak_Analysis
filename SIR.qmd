@@ -1,0 +1,63 @@
+---
+title: "SIR Models"
+format: html
+editor: visual
+---
+
+## Introduction
+
+Preparation
+
+```{r}
+pacman::p_load(tidyverse, 
+               shinySIR)
+```
+
+Run the package
+
+```{r}
+run_shiny(model = "SIR")
+```
+
+### Model specification
+
+A number of common models are supplied with the package, including the SIR, SIRS, and SIS models. They can be accessed using the `model` argument, as shown above for the SIR model. These built-in models are parameterized using R0 and the infectious period (1/γ), since these may be more intuitive for new students than the slightly abstract transmission rate (β) and recovery rate (γ). The values for β and γ are calculated from the other parameters and printed in a table below the graph (as shown in the SIR example above). A comprehensive description of all built-in models is given below. Brief information can also be obtained by calling `default_models()`.
+
+### User-defined models
+
+Users can also specify their own models using the `neweqns` argument. `neweqns` takes a function containing the equations for the new model, with syntax as outlined in the example below. Note the syntax follows that used by the popular ODE solver `deSolve`.
+
+```{r}
+mySIRS <- function(t, y, parms) {
+
+    with(as.list(c(y, parms)),{
+
+        # Change in Susceptibles
+        dS <- - beta * S * I + delta * R
+
+        # Change in Infecteds
+        dI <- beta * S * I - gamma * I
+
+        # Change in Recovereds
+        dR <- gamma * I - delta * R
+
+    return(list(c(dS, dI, dR)))
+    })
+}
+```
+
+The interactive plot can then be created by calling this function with `neweqns`, specifying initial conditions for all model variables (`ics`), and specifying vectors for the parameter attributes, including parameter starting values (`parm0`), names to be displayed in the interactive menu (`parm_names`), and minimum and maximum values for the interactive menu (`parm_min` and `parm_max`, respectively).
+
+```{r}
+run_shiny(model = "SIRS (w/out demography)", 
+          neweqns = mySIRS,
+          ics = c(S = 9999, I = 1, R = 0),
+          parm0 = c(beta = 5e-5, gamma = 1/7, delta = 0.1),
+          parm_names = c("Transmission rate", "Recovery rate", "Loss of immunity"),
+          parm_min = c(beta = 1e-5, gamma = 1/21, delta = 1/365),
+          parm_max = c(beta = 9e-5, gamma = 1 , delta = 1))
+```
+
+Reference:
+
+1.  shinySIR [package](https://cran.r-project.org/web/packages/shinySIR/vignettes/Vignette.html)
